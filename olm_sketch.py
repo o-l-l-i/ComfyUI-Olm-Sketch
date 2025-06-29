@@ -1,4 +1,3 @@
-from librosa import cache
 import torch
 import numpy as np
 from PIL import Image, ImageColor
@@ -11,7 +10,6 @@ import time
 import traceback
 import uuid
 import re
-import glob
 
 
 COMFY_OUTPUT_BASE = os.path.abspath(os.path.join(os.getcwd(), "output"))
