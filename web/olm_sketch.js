@@ -289,7 +289,7 @@ function reorderWidgets(node) {
     const background = getWidgetSafe(node, "background");
     const crop_editor = getWidgetSafe(node, "crop_editor");
     const tool = getWidgetSafe(node, "tool");
-
+    const fill_shapes = getWidgetSafe(node, "fill_shapes");
     const newOrder = [
         drawing_version,
         drawing_filename,
@@ -303,6 +303,7 @@ function reorderWidgets(node) {
         crop_editor,
         tool,
         strokeWidth,
+        fill_shapes,
         color,
         background,
         brush_alpha,
@@ -468,7 +469,10 @@ app.registerExtension({
                     "freehand",
                     (value) => {
                         this.tool = value;
-                    }, { values: ["freehand", "line"],  default: "freehand"});
+                    }, { values: ["freehand", "line", "rectangle", "ellipse"],  default: "freehand"});
+                this.addWidget("toggle", "fill_shapes", false, () => {
+                    this.setDirtyCanvas(true);
+                });
             }
 
 
@@ -1049,7 +1053,16 @@ app.registerExtension({
                     if (this.tool === "line") {
                         this.isDrawing = true;
                         return true;
-                    } else {
+                    }
+                    else if (this.tool === "rectangle") {
+                        this.isDrawing = true;
+                        return true;
+                    }
+                    else if (this.tool === "ellipse") {
+                        this.isDrawing = true;
+                        return true;
+                    }
+                    else {
                         this.isDrawing = true;
                         const canvas = app.canvas;
                         if (canvas) {
@@ -1081,6 +1094,16 @@ app.registerExtension({
                 const local = getPreviewLocalPos(this, pos);
 
                 if (this.isDrawing && this.tool === "line") {
+                    this.lastPos = local;
+                    this.setDirtyCanvas(true);
+                    return true;
+                }
+                else if (this.tool === "rectangle") {
+                    this.lastPos = local;
+                    this.setDirtyCanvas(true);
+                    return true;
+                }
+                else if (this.tool === "ellipse") {
                     this.lastPos = local;
                     this.setDirtyCanvas(true);
                     return true;
@@ -1138,7 +1161,66 @@ app.registerExtension({
                         this.sendDrawingToBackend();
                         this.isDrawing = false;
                         return true;
-                    } else {
+                    }
+                    else if (this.tool === "rectangle") {
+                        const shouldFill = this.getWidgetValue("fill_shapes") === true;
+                        ctx.save();
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.globalAlpha = this.baseBrushAlpha;
+                        ctx.strokeStyle = hexToRgba(this.strokeColor, this.baseBrushAlpha);
+                        ctx.lineWidth = this.strokeWidth;
+                        ctx.lineCap = "butt";
+                        ctx.lineJoin = "miter";
+
+                        const x = Math.floor(this.lineStart.x) + 0.5;
+                        const y = Math.floor(this.lineStart.y) + 0.5;
+                        const w = Math.floor(this.lastPos.x - this.lineStart.x);
+                        const h = Math.floor(this.lastPos.y - this.lineStart.y);
+
+                        ctx.beginPath();
+                        ctx.rect(x, y, w, h);
+                        if (shouldFill) {
+                            ctx.lineWidth = 1;
+                            ctx.fillStyle = hexToRgba(this.strokeColor, this.baseBrushAlpha);
+                            ctx.fill();
+                        }
+                        ctx.stroke();
+                        ctx.restore();
+
+                        this.setDirtyCanvas(true, true);
+                        this.sendDrawingToBackend();
+                        this.isDrawing = false;
+                        return true;
+                    }
+                    else if (this.tool === "ellipse") {
+                        const shouldFill = this.getWidgetValue("fill_shapes") === true;
+                        ctx.save();
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.globalAlpha = this.baseBrushAlpha;
+                        ctx.strokeStyle = hexToRgba(this.strokeColor, this.baseBrushAlpha);
+                        ctx.lineWidth = this.strokeWidth;
+
+                        const centerX = (this.lineStart.x + this.lastPos.x) / 2.0;
+                        const centerY = (this.lineStart.y + this.lastPos.y) / 2.0;
+                        const radiusX = Math.abs(this.lastPos.x - this.lineStart.x) / 2.0;
+                        const radiusY = Math.abs(this.lastPos.y - this.lineStart.y) / 2.0;
+
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                        if (shouldFill) {
+                            ctx.lineWidth = 1;
+                            ctx.fillStyle = hexToRgba(this.strokeColor, this.baseBrushAlpha);
+                            ctx.fill();
+                        }
+                        ctx.stroke();
+                        ctx.restore();
+
+                        this.setDirtyCanvas(true, true);
+                        this.sendDrawingToBackend();
+                        this.isDrawing = false;
+                        return true;
+                    }
+                    else {
                         this.isDrawing = false;
                         this.lastPos = null;
                         this.setDirtyCanvas(true, true);
@@ -1220,15 +1302,36 @@ app.registerExtension({
 
                 ctx.restore();
 
-                if (this.tool === "line" && this.isDrawing) {
+                if ((this.tool === "line" || this.tool === "rectangle" || this.tool === "ellipse") && this.isDrawing) {
                     ctx.save();
+
+                    ctx.beginPath();
+                    ctx.rect(x, y, canvasWidth, canvasHeight);
+                    ctx.clip();
                     ctx.strokeStyle = "rgba(255,255,255,0.5)";
                     ctx.lineWidth = this.strokeWidth || 2;
                     ctx.setLineDash([5, 5]);
-                    ctx.beginPath();
-                    ctx.moveTo(this.lineStart.x + x, this.lineStart.y + y);
-                    ctx.lineTo(this.lastPos.x + x, this.lastPos.y + y);
-                    ctx.stroke();
+
+                    if (this.tool === "line") {
+                        ctx.beginPath();
+                        ctx.moveTo(this.lineStart.x + x, this.lineStart.y + y);
+                        ctx.lineTo(this.lastPos.x + x, this.lastPos.y + y);
+                        ctx.stroke();
+                    } else if (this.tool === "rectangle") {
+                        const gx = this.lineStart.x + x;
+                        const gy = this.lineStart.y + y;
+                        const gw = this.lastPos.x - this.lineStart.x;
+                        const gh = this.lastPos.y - this.lineStart.y;
+                        ctx.strokeRect(gx, gy, gw, gh);
+                    } else if (this.tool === "ellipse") {
+                        const cx = (this.lineStart.x + this.lastPos.x) / 2.0 + x;
+                        const cy = (this.lineStart.y + this.lastPos.y) / 2.0 + y;
+                        const rx = Math.abs(this.lastPos.x - this.lineStart.x) / 2.0;
+                        const ry = Math.abs(this.lastPos.y - this.lineStart.y) / 2.0;
+                        ctx.beginPath();
+                        ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+                        ctx.stroke();
+                    }
                     ctx.restore();
                 }
             };

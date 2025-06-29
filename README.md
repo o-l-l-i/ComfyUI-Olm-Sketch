@@ -26,13 +26,14 @@ Use it for:
 
 ---
 
-![Olm Sketch image](./assets/olm_sketch_panel_view.png)![Olm Sketch image](./assets/olm_sketch_line_tool.png)
+![Olm Sketch image](./assets/olm_sketch_panel_view.png)![Olm Sketch image](./assets/olm_sketch_line_tool.png)![Olm Sketch image](./assets/olm_sketch_shapes.png)
 
 ## 🎨 Features
 
 - ✍️ **Interactive Drawing UI**
   - Freehand and line tools
   - Line tool includes a dashed visual preview
+  - Supports drawing rectangles and ellipses, with optional fill toggle
 
 - 🧰 **Image Tools**
   - Flip X / Flip Y
