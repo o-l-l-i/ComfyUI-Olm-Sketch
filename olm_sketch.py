@@ -44,11 +44,10 @@ class OlmSketch:
                 "color": ("STRING", {"default": "#ffffff"}),
                 "background": ("STRING", {"default": "#000000"}),
             },
-            "optional": {
-            },
+            "optional": {},
             "hidden": {
                 "node_id": "UNIQUE_ID",
-            }
+            },
         }
 
     RETURN_TYPES = ("IMAGE", "MASK")
@@ -56,10 +55,8 @@ class OlmSketch:
     FUNCTION = "generate_drawing"
     CATEGORY = "image/drawing"
 
-
     def ensure_drawing_uid(self, drawing_uid, node_id):
         return ensure_drawing_uid_static(drawing_uid, node_id)
-
 
     def parse_color(self, color_str, fallback=(255, 255, 255, 255)):
         try:
@@ -68,14 +65,26 @@ class OlmSketch:
             print(f"⚠️ Invalid color string '{color_str}', using fallback.")
             return fallback
 
-
     def is_dark_color(self, rgba):
         r, g, b, _ = rgba
         luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
         return luminance < 128
 
-
-    def generate_drawing(self, drawing_version, drawing_filename, drawing_uid, workflow_name, save_directory, filename, width, height, color, background, node_id=None, stroke_width=2):
+    def generate_drawing(
+        self,
+        drawing_version,
+        drawing_filename,
+        drawing_uid,
+        workflow_name,
+        save_directory,
+        filename,
+        width,
+        height,
+        color,
+        background,
+        node_id=None,
+        stroke_width=2,
+    ):
         debug_print(f"=== OlmSketch.generate_drawing called ===")
         debug_print(f"drawing_version: '{drawing_version}'")
         debug_print(f"drawing_filename: '{drawing_filename}'")
@@ -103,9 +112,9 @@ class OlmSketch:
         debug_print("temp_dir:", temp_dir)
         debug_print("drawing_path:", drawing_path)
 
-        if (not os.path.exists(drawing_path)) and hasattr(self, 'node_id'):
+        if (not os.path.exists(drawing_path)) and hasattr(self, "node_id"):
             cache_dir = os.path.join(COMFY_OUTPUT_BASE, "olm_sketch_cache")
-            safe_workflow_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', workflow_name)
+            safe_workflow_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", workflow_name)
             cache_filename = f"drawing_{safe_workflow_name}_{self.drawing_uid}.png"
             cached_path = os.path.join(cache_dir, cache_filename)
 
@@ -121,8 +130,12 @@ class OlmSketch:
                 drawn_image = Image.open(drawing_path).convert("RGBA")
 
                 if drawn_image.size != (width, height):
-                    debug_print(f"Resizing drawing from {drawn_image.size} to ({width}, {height})")
-                    drawn_image = drawn_image.resize((width, height), Image.Resampling.LANCZOS)
+                    debug_print(
+                        f"Resizing drawing from {drawn_image.size} to ({width}, {height})"
+                    )
+                    drawn_image = drawn_image.resize(
+                        (width, height), Image.Resampling.LANCZOS
+                    )
 
                 image.paste(drawn_image, (0, 0), drawn_image)
                 debug_print("✅ Drawing composited onto background.")
@@ -154,28 +167,38 @@ def cleanup_old_drawings(directory, drawing_uid: str, max_age_secs=3600, max_fil
 
     try:
         files = sorted(
-            [f for f in os.scandir(directory)
-             if f.is_file() and f.name.startswith(prefix)],
-            key=lambda f: f.stat().st_mtime
+            [
+                f
+                for f in os.scandir(directory)
+                if f.is_file() and f.name.startswith(prefix)
+            ],
+            key=lambda f: f.stat().st_mtime,
         )
 
         for f in files:
             age = now - f.stat().st_mtime
             if age > max_age_secs:
                 os.remove(f.path)
-                debug_print(f"🧹 Deleted expired temp file for node {drawing_uid}: {f.name}")
+                debug_print(
+                    f"🧹 Deleted expired temp file for node {drawing_uid}: {f.name}"
+                )
 
         files = sorted(
-            [f for f in os.scandir(directory)
-             if f.is_file() and f.name.startswith(prefix)],
-            key=lambda f: f.stat().st_mtime
+            [
+                f
+                for f in os.scandir(directory)
+                if f.is_file() and f.name.startswith(prefix)
+            ],
+            key=lambda f: f.stat().st_mtime,
         )
 
         if len(files) > max_files:
             excess = len(files) - max_files
             for f in files[:excess]:
                 os.remove(f.path)
-                debug_print(f"🧹 Deleted excess temp file for node {drawing_uid}: {f.name}")
+                debug_print(
+                    f"🧹 Deleted excess temp file for node {drawing_uid}: {f.name}"
+                )
 
     except Exception as e:
         print(f"⚠️ Cleanup error for node {drawing_uid}: {e}")
@@ -195,20 +218,20 @@ def ensure_drawing_uid_static(drawing_uid, node_id):
     return new_uid
 
 
-@PromptServer.instance.routes.post("/api/drawing/save")
+@PromptServer.instance.routes.post("/olm/api/drawing/save")
 async def save_drawing(request):
-    debug_print('=== API: save_drawing called ===')
+    debug_print("=== API: save_drawing called ===")
 
     try:
         data = await request.json()
 
-        node_id = data.get('id') or data.get('node_id') or ''
-        drawing_uid = data.get('drawing_uid', '')
-        image_data = data.get('image_data', '')
-        workflow_name = data.get('workflow_name', 'unknown_workflow')
-        drawing_filename = data.get('drawing_filename', 'uknown_drawing_filename')
-        is_permanent = data.get('triggered_by_user_save', False)
-        safe_workflow_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', workflow_name)
+        node_id = data.get("id") or data.get("node_id") or ""
+        drawing_uid = data.get("drawing_uid", "")
+        image_data = data.get("image_data", "")
+        workflow_name = data.get("workflow_name", "unknown_workflow")
+        drawing_filename = data.get("drawing_filename", "uknown_drawing_filename")
+        is_permanent = data.get("triggered_by_user_save", False)
+        safe_workflow_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", workflow_name)
 
         final_drawing_uid = ensure_drawing_uid_static(drawing_uid, node_id)
         debug_print(f"Using drawing_uid: {final_drawing_uid}")
@@ -218,21 +241,23 @@ async def save_drawing(request):
         debug_print(f"drawing_filename: {drawing_filename}")
         debug_print(f"is_permanent: {is_permanent}")
 
-        if not image_data.startswith('data:image'):
+        if not image_data.startswith("data:image"):
             raise ValueError("Invalid image data")
 
-        image_bytes = base64.b64decode(image_data.split(',')[1])
+        image_bytes = base64.b64decode(image_data.split(",")[1])
 
         temp_dir = folder_paths.get_temp_directory()
         os.makedirs(temp_dir, exist_ok=True)
 
-        cleanup_old_drawings(temp_dir, drawing_uid=final_drawing_uid, max_age_secs=3600, max_files=50)
+        cleanup_old_drawings(
+            temp_dir, drawing_uid=final_drawing_uid, max_age_secs=3600, max_files=50
+        )
 
         timestamp = int(time.time() * 1000)
         temp_filename = f"drawing_{final_drawing_uid}_{timestamp}.png"
         temp_filepath = os.path.join(temp_dir, temp_filename)
 
-        with open(temp_filepath, 'wb') as f:
+        with open(temp_filepath, "wb") as f:
             f.write(image_bytes)
         debug_print(f"🟨 Saved temp sketch to: {temp_filepath}")
 
@@ -247,32 +272,31 @@ async def save_drawing(request):
             debug_print("cache_filename: ", cache_filename)
             debug_print("cache_path: ", cache_path)
 
-            with open(cache_path, 'wb') as f:
+            with open(cache_path, "wb") as f:
                 f.write(image_bytes)
             debug_print(f"✅ Auto-cached sketch to: {cache_path}")
         else:
             cache_filename = temp_filename
 
         debug_print(f"Looks like save was successful...")
-        return web.json_response({
-            "status": "success",
-            "drawing_uid": final_drawing_uid,
-            "workflow_name": workflow_name,
-            "is_permanent": is_permanent,
-            "temp_filename": temp_filename,
-            "cache_filename": cache_filename
-        })
+        return web.json_response(
+            {
+                "status": "success",
+                "drawing_uid": final_drawing_uid,
+                "workflow_name": workflow_name,
+                "is_permanent": is_permanent,
+                "temp_filename": temp_filename,
+                "cache_filename": cache_filename,
+            }
+        )
 
     except Exception as e:
         print(f"❌ Error in save_drawing: {e}")
         traceback.print_exc()
-        return web.json_response({
-            "status": "error",
-            "error": str(e)
-        }, status=500)
+        return web.json_response({"status": "error", "error": str(e)}, status=500)
 
 
-@PromptServer.instance.routes.post("/api/drawing/save_permanent")
+@PromptServer.instance.routes.post("/olm/api/drawing/save_permanent")
 async def save_drawing_permanent(request):
     try:
         body = await request.json()
@@ -302,12 +326,14 @@ async def save_drawing_permanent(request):
             f.write(image_bytes)
 
         debug_print(f"✅ Image saved to {save_path}")
-        return web.json_response({
-            "status": "success",
-            "filename": filename,
-            "path": save_path,
-            "relative_path": os.path.relpath(save_path, COMFY_OUTPUT_BASE)
-        })
+        return web.json_response(
+            {
+                "status": "success",
+                "filename": filename,
+                "path": save_path,
+                "relative_path": os.path.relpath(save_path, COMFY_OUTPUT_BASE),
+            }
+        )
 
     except Exception as e:
         print(f"❌ API Error (save_drawing_permanent): {str(e)}")
@@ -315,21 +341,19 @@ async def save_drawing_permanent(request):
         return web.json_response({"error": str(e)}, status=500)
 
 
-@PromptServer.instance.routes.get("/api/drawing/load")
+@PromptServer.instance.routes.get("/olm/api/drawing/load")
 async def load_drawing(request):
-    debug_print("=== /api/drawing/load ===")
+    debug_print("=== /olm/api/drawing/load ===")
     try:
         node_id = request.query.get("id")
         drawing_uid = request.query.get("drawing_uid", "")
         drawing_filename = request.query.get("drawing_filename")
         workflow_name = request.query.get("workflow_name", "unknown_workflow")
-        safe_workflow_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', workflow_name)
-
+        safe_workflow_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", workflow_name)
 
         if not drawing_uid:
             raise ValueError("Missing 'drawing_uid' in request")
 
-        # testing uid system
         debug_print(f"id: {node_id}")
         debug_print(f"drawing_uid: {drawing_uid}")
         debug_print(f"drawing_filename: {drawing_filename}")
@@ -349,7 +373,9 @@ async def load_drawing(request):
 
         cache_dir = os.path.join(COMFY_OUTPUT_BASE, "olm_sketch_cache")
         debug_print("cache_dir:", cache_dir)
-        cached_drawing_filename = "drawing_" + workflow_name + "_" + drawing_uid + ".png"
+        cached_drawing_filename = (
+            "drawing_" + workflow_name + "_" + drawing_uid + ".png"
+        )
         load_from_cache_path = os.path.join(cache_dir, cached_drawing_filename)
         debug_print("load_from_cache_path:", load_from_cache_path)
 
@@ -372,10 +398,7 @@ async def load_drawing(request):
 WEB_DIRECTORY = "./web"
 
 
-NODE_CLASS_MAPPINGS = {
-    "OlmSketch": OlmSketch
-}
+NODE_CLASS_MAPPINGS = {"OlmSketch": OlmSketch}
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "OlmSketch": "Olm Sketch"
-}
+
+NODE_DISPLAY_NAME_MAPPINGS = {"OlmSketch": "Olm Sketch"}

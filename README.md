@@ -7,7 +7,7 @@ An interactive sketching and drawing node for ComfyUI with stylus/pen support �
 - **Author:** Olli Sorjonen
 - **GitHub:** [https://github.com/o-l-l-i](https://github.com/o-l-l-i)
 - **X:** [https://x.com/Olmirad](https://x.com/Olmirad)
-- **Version:** 1.0.0
+- **Version:** 1.0.1 (Restructuring code, new features)
 
 ---
 
@@ -40,6 +40,8 @@ Use it for:
   - Rotate 90°
   - Invert colors
   - Crop using numeric inputs (L, R, T, B)
+  - Blur
+  - Offset
 
 - 🌈 **Flexible, Basic Brush System**
   - Stroke width: 1–1024 px
@@ -59,6 +61,7 @@ Use it for:
   - Node auto-resizes to match image
   - Supports up to 2048x2048px (4K+ in future updates)
   - Compact UI layout for a clean graph experience
+  - Confirmations for potentially destructive operations
 
 - 💡 **Persistence**
   - Images persist and can tolerate UI restart and backend restart
@@ -118,10 +121,29 @@ There are no extra dependencies - it works out of the box.
 ---
 
 ## Pen support
+
 - At least Wacom styluses seem to work; but very limited testing has been done so far.
 - HTML color picker's eyedropper does not work at all with pen touch - map click (left) to a button to get around this issue.
 - Pressure sensitivity did not function in browser (Chrome) when Windows Ink was disabled in Wacom settings.
 - The pen controls sometimes start to fail and you can't adjust widgets.
+
+---
+
+## Updates 1.0.1
+
+- Refactored to more modular code structure for new features (coming later) and maintainability
+- Added new custom modular confirmation modals
+- Added new custom modular input elements
+- Added Canvas offset tool with wraparound
+- Added simple radius based blur tool
+- Improved mouse event handling
+- Improved canvas interaction states
+- Improved button UX (hover/click states)
+- IMproved input validation
+- Improved widget size calculation (should reduce UI glitches)
+- Improved dynamic node resize setup
+
+![Olm Sketch modals](./assets/olm_confirm_modals.png)
 
 ---
 
