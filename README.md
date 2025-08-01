@@ -139,7 +139,7 @@ There are no extra dependencies - it works out of the box.
 - Improved mouse event handling
 - Improved canvas interaction states
 - Improved button UX (hover/click states)
-- IMproved input validation
+- Improved input validation
 - Improved widget size calculation (should reduce UI glitches)
 - Improved dynamic node resize setup
 
