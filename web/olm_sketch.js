@@ -434,6 +434,24 @@ app.registerExtension({
         return saveDrawingPermanently(this);
       };
 
+      nodeType.prototype.pasteFile = function (blob) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            this.renderImage(img);
+          };
+          img.onerror = (err) => {
+            console.warn("Failed to load pasted image:", err);
+          };
+          img.src = event.target.result;
+        };
+        reader.onerror = (err) => {
+          console.warn("Failed to read pasted file:", err);
+        };
+        reader.readAsDataURL(blob);
+     };
+
       nodeType.prototype.onConfigure = function () {
         if (originalOnConfigure) {
           originalOnConfigure.call(this);
@@ -452,6 +470,7 @@ app.registerExtension({
 
         this.blendMode = this.getWidgetValue("Blend Mode");
         this.tool = this.getWidgetValue("tool");
+        this.previewMediaType = "image";
 
         removeInputs(this, (input) =>
           [
@@ -572,6 +591,27 @@ app.registerExtension({
             this.setDirtyCanvas(true, true);
           }
         }
+      };
+
+      nodeType.prototype.onDragOver = function (event) {
+        const items = event?.dataTransfer?.items;
+        if (!items) return false;
+
+        return Array.from(items).some(
+          (item) => item.kind === "file"
+        );
+      };
+
+      nodeType.prototype.onDragDrop = function (event) {
+        const items = event.dataTransfer?.items;
+        if (!items?.length) return false;
+
+        const filtered = Array.from(items).filter(i => i.type.startsWith("image/"));
+        const blob = filtered[0]?.getAsFile();
+        if (!blob) return false;
+
+        this.pasteFile?.(blob);
+        return true;
       };
 
       nodeType.prototype.onRemoved = function () {
