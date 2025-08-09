@@ -7,7 +7,7 @@ An interactive sketching and drawing node for ComfyUI with stylus/pen support â€
 - **Author:** Olli Sorjonen
 - **GitHub:** [https://github.com/o-l-l-i](https://github.com/o-l-l-i)
 - **X:** [https://x.com/Olmirad](https://x.com/Olmirad)
-- **Version:** 1.0.1 (Restructuring code, new features)
+- **Version:** 1.0.1.1 (Chain original mouse event handlers to maintain subgraph header button functionality in ComfyUI frontend 1.24.4 and later.)
 
 ---
 
@@ -154,6 +154,14 @@ Functionality, file formats, and behavior may change without notice, and compati
 **Use at your own risk, especially in production workflows.**
 
 Back up your projects frequently. Feedback, bug reports, and suggestions are always welcome - but expect breakage, quirks, and rough edges. This tool does what I need right now; future updates may be irregular depending on available time.
+
+---
+
+## Version History
+
+- **1.0.1.1** Chain original mouse event handlers to maintain subgraph header button functionality in ComfyUI frontend 1.24.4 and later.
+- **1.0.1** Restructuring code, new features.
+- **1.0.0** Initial release.
 
 ---
 

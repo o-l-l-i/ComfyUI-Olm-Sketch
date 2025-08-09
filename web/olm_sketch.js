@@ -1,14 +1,9 @@
 import { app } from "../../scripts/app.js";
-
 import { api } from "../../scripts/api.js";
-
 import { ComfyWidgets } from "../../scripts/widgets.js";
-
 import { createColorPickerWidget } from "./widgets/colorPickerWidget.js";
-
 import { showImageUploadDialog } from "./utils/imageImportUtils.js";
 import { showConfirmDialog } from "./ui/confirmDialog.js";
-
 import { createMultiButtonWidget } from "./widgets/multiButtonWidget.js";
 import { createCropEditorWidget } from "./widgets/cropEditorWidget.js";
 import { createBlurWidget } from "./widgets/createBlurWidget.js";
@@ -163,6 +158,8 @@ app.registerExtension({
           if (widget) {
             widget.hidden = true;
             widget.computeSize = () => [0, 0];
+            if (["drawing_uid", "workflow_name"].includes(name)) {
+            }
           }
         }
       };
@@ -227,7 +224,6 @@ app.registerExtension({
 
       nodeType.prototype.setupColorPicker = function (app) {
         const colorWidget = this.getWidget("color");
-
         if (colorWidget) {
           const widgetIndex = this.widgets.indexOf(colorWidget);
           const colorPickerWidget = createColorPickerWidget(
@@ -247,7 +243,6 @@ app.registerExtension({
 
       nodeType.prototype.setupBackgroundColorPicker = function (app) {
         const backgroundColorWidget = this.getWidget("background");
-
         if (backgroundColorWidget) {
           const widgetIndex = this.widgets.indexOf(backgroundColorWidget);
           const backgroundColorPickerWidget = createColorPickerWidget(
@@ -339,22 +334,18 @@ app.registerExtension({
         this.initWidgets(app);
         this.initState();
         this.initCanvas();
-
         reorderWidgets(this);
 
         let currentWorkflowName = "unknown_workflow";
-
         this._onWorkflowSaved = (event) => {
           const filename = event.detail?.filename;
           currentWorkflowName = filename || "unknown_workflow";
-
           setTimeout(() => {
             if (this.sendDrawingToBackend) {
               this.sendDrawingToBackend(true, currentWorkflowName);
             }
           }, 100);
         };
-
         window.addEventListener(
           "comfyui-workflow-saved",
           this._onWorkflowSaved
@@ -372,18 +363,13 @@ app.registerExtension({
       nodeType.prototype.renderImage = function (img) {
         this.drawingCanvas.width = img.width;
         this.drawingCanvas.height = img.height;
-
         this.drawingCtx.fillStyle = this.backgroundColor || "#000000";
         this.drawingCtx.fillRect(0, 0, img.width, img.height);
-
         setWidgetValue(this, "width", img.width);
         setWidgetValue(this, "height", img.height);
-
         this.drawingCtx.drawImage(img, 0, 0);
-
         this.setSize(this.computeSize());
         this.setDirtyCanvas(true);
-
         this.sendDrawingToBackend();
       };
 
@@ -443,7 +429,6 @@ app.registerExtension({
         const height = this.getWidgetValue("height") || 512;
         this.drawingCanvas.width = width;
         this.drawingCanvas.height = height;
-
         const ctx = this.drawingCtx;
         ctx.fillStyle = this.backgroundColor || "#000000";
         ctx.fillRect(0, 0, width, height);
@@ -464,6 +449,53 @@ app.registerExtension({
       };
 
       nodeType.prototype.onAdded = function () {
+        const node = this;
+
+        const originalOnMouseDown = node.onMouseDown;
+        const originalOnMouseMove = node.onMouseMove;
+        const originalOnMouseUp = node.onMouseUp;
+        const originalOnMouseLeave = node.onMouseLeave;
+
+        function delegateToWidgets(self, e, pos) {
+          for (const widget of self.widgets || []) {
+            if (
+              INTERACTIVE_WIDGET_NAMES.includes(widget.name) &&
+              typeof widget.mouse === "function" &&
+              widget.mouse(e, pos, self)
+            ) {
+              return true;
+            }
+          }
+          return false;
+        }
+
+        node.onMouseDown = function (e, pos, canvas) {
+          const wasHandled = originalOnMouseDown?.call(this, e, pos, canvas);
+          if (wasHandled) return true;
+          if (delegateToWidgets(this, e, pos)) return true;
+          return handleMouseDown(this, e, pos);
+        };
+
+        node.onMouseMove = function (e, pos, canvas) {
+          const wasHandled = originalOnMouseMove?.call(this, e, pos, canvas);
+          if (wasHandled) return true;
+          if (delegateToWidgets(this, e, pos)) return true;
+          return handleMouseMove(this, e, pos);
+        };
+
+        node.onMouseUp = function (e, pos, canvas) {
+          const wasHandled = originalOnMouseUp?.call(this, e, pos, canvas);
+          if (wasHandled) return true;
+          if (delegateToWidgets(this, e, pos)) return true;
+          return handleMouseUp(this, e, pos);
+        };
+
+        node.onMouseLeave = function (e, pos, canvas) {
+          const wasHandled = originalOnMouseLeave?.call(this, e, pos, canvas);
+          if (wasHandled) return true;
+          return handleMouseLeave(this);
+        };
+
         removeInputs(this, (input) =>
           [
             "drawing_version",
@@ -475,67 +507,12 @@ app.registerExtension({
         this.setDirtyCanvas(true, true);
       };
 
-      nodeType.prototype.onMouseDown = function (e, pos) {
-        if (this.widgets) {
-          for (const widget of this.widgets) {
-            if (
-              INTERACTIVE_WIDGET_NAMES.includes(widget.name) &&
-              widget.mouse &&
-              widget.mouse(e, pos, this)
-            ) {
-              return true;
-            }
-          }
-        }
-
-        return handleMouseDown(this, e, pos);
-      };
-
-      nodeType.prototype.onMouseMove = function (e, pos) {
-        if (this.widgets) {
-          for (const widget of this.widgets) {
-            if (
-              INTERACTIVE_WIDGET_NAMES.includes(widget.name) &&
-              widget.mouse &&
-              widget.mouse(e, pos, this)
-            ) {
-              return true;
-            }
-          }
-        }
-
-        return handleMouseMove(this, e, pos);
-      };
-
-      nodeType.prototype.onMouseUp = function (e, pos) {
-        if (this.widgets) {
-          for (const widget of this.widgets) {
-            if (
-              INTERACTIVE_WIDGET_NAMES.includes(widget.name) &&
-              widget.mouse &&
-              widget.mouse(e, pos, this)
-            ) {
-              return true;
-            }
-          }
-        }
-
-        return handleMouseUp(this, e, pos);
-      };
-
-      nodeType.prototype.onMouseLeave = function () {
-        return handleMouseLeave(this);
-      };
-
       nodeType.prototype.computeSize = function () {
         const canvasWidth = this.drawingCanvas?.width || 512;
         const canvasHeight = this.drawingCanvas?.height || 512;
         const baseWidth = Math.max(canvasWidth + PADDING_X, 300);
-
         const baseYOffset = 120;
-
         let totalHeight = baseYOffset + canvasHeight;
-
         const visibleWidgets = this.widgets?.filter((w) => !w.hidden) || [];
 
         for (const widget of visibleWidgets) {
